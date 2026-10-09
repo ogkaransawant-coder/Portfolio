@@ -3,6 +3,7 @@ import { type CSSProperties, useEffect, useRef, useState } from 'react';
 const sections = ['home', 'about', 'education', 'skills', 'experience', 'contact'] as const;
 type SectionId = (typeof sections)[number];
 type IntroPhase = 'loading' | 'closing' | 'entered';
+const SECTION_ANIMATION_HOLD_MS = 1900;
 
 function LetterLine({ children }: { children: string }) {
   return (
@@ -65,6 +66,7 @@ function App() {
   );
   const [activeSection, setActiveSection] = useState<SectionId>('home');
   const introPhaseRef = useRef<IntroPhase>(introPhase);
+  const sectionPauseUntilRef = useRef(0);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
@@ -104,13 +106,25 @@ function App() {
     introPhaseRef.current = introPhase;
     if (introPhase === 'entered') {
       document.documentElement.classList.remove('intro-active');
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        sectionPauseUntilRef.current = performance.now() + SECTION_ANIMATION_HOLD_MS;
+      }
       requestAnimationFrame(() => {
-        document.querySelectorAll<HTMLElement>('.stage').forEach((stage) => {
+        const center = window.innerHeight * 0.48;
+        let firstStage: HTMLElement | null = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        for (const stage of document.querySelectorAll<HTMLElement>('.stage')) {
           const rect = stage.getBoundingClientRect();
-          if (rect.bottom > 0 && rect.top < window.innerHeight * 0.92) {
-            stage.classList.add('is-visible');
+          if (rect.bottom > 0 && rect.top < window.innerHeight) {
+            const stageCenter = rect.top + Math.min(rect.height, window.innerHeight) / 2;
+            const distance = Math.abs(stageCenter - center);
+            if (distance < nearestDistance) {
+              nearestDistance = distance;
+              firstStage = stage;
+            }
           }
-        });
+        }
+        firstStage?.classList.add('is-visible');
       });
     } else {
       document.documentElement.classList.add('intro-active');
@@ -128,12 +142,21 @@ function App() {
       entries.forEach((entry) => {
         if (introPhaseRef.current !== 'entered') return;
         if (entry.isIntersecting) {
-          requestAnimationFrame(() => entry.target.classList.add('is-visible'));
+          const stage = entry.target as HTMLElement;
+          if (!stage.classList.contains('is-visible')) {
+            requestAnimationFrame(() => stage.classList.add('is-visible'));
+            if (!reducedMotion) {
+              sectionPauseUntilRef.current = Math.max(
+                sectionPauseUntilRef.current,
+                performance.now() + SECTION_ANIMATION_HOLD_MS,
+              );
+            }
+          }
         } else if (entry.boundingClientRect.bottom <= 0 || entry.boundingClientRect.top >= window.innerHeight) {
           entry.target.classList.remove('is-visible');
         }
       });
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.02 });
+    }, { rootMargin: '0px 0px -50% 0px', threshold: 0.02 });
     stageNodes.forEach((stage) => revealObserver.observe(stage));
 
     let scrollFrame = 0;
@@ -157,6 +180,102 @@ function App() {
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     updateActive();
+
+    const canPaceSections =
+      !reducedMotion &&
+      window.matchMedia('(min-width: 701px) and (hover: hover) and (pointer: fine)').matches;
+    let sectionMoveLocked = false;
+    let wheelGestureActive = false;
+    let wheelIdleTimer = 0;
+    let sectionUnlockTimer = 0;
+
+    const nearestStageIndex = () => {
+      const center = window.innerHeight * 0.48;
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      stageNodes.forEach((stage, index) => {
+        const rect = stage.getBoundingClientRect();
+        if (rect.bottom <= 0 || rect.top >= window.innerHeight) return;
+        const stageCenter = rect.top + Math.min(rect.height, window.innerHeight) / 2;
+        const distance = Math.abs(stageCenter - center);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = index;
+        }
+      });
+      return nearestIndex;
+    };
+
+    const startSectionMove = (direction: number) => {
+      const destination = stageNodes[nearestStageIndex() + direction];
+      if (
+        !destination ||
+        introPhaseRef.current !== 'entered' ||
+        sectionMoveLocked ||
+        performance.now() < sectionPauseUntilRef.current
+      ) return false;
+
+      sectionMoveLocked = true;
+      sectionPauseUntilRef.current = performance.now() + SECTION_ANIMATION_HOLD_MS;
+      destination.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.clearTimeout(sectionUnlockTimer);
+      sectionUnlockTimer = window.setTimeout(() => {
+        sectionMoveLocked = false;
+      }, SECTION_ANIMATION_HOLD_MS);
+      return true;
+    };
+
+    const resetWheelGesture = () => {
+      window.clearTimeout(wheelIdleTimer);
+      wheelIdleTimer = window.setTimeout(() => {
+        wheelGestureActive = false;
+      }, 220);
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (!canPaceSections || event.ctrlKey || event.deltaY === 0) return;
+      if (introPhaseRef.current !== 'entered') {
+        event.preventDefault();
+        return;
+      }
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest('input, textarea, select, [contenteditable="true"]')) return;
+
+      const direction = Math.sign(event.deltaY);
+      const destinationIndex = nearestStageIndex() + direction;
+      if (destinationIndex < 0 || destinationIndex >= stageNodes.length) return;
+
+      event.preventDefault();
+      resetWheelGesture();
+      if (wheelGestureActive) return;
+      wheelGestureActive = true;
+      startSectionMove(direction);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!canPaceSections) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
+
+      let direction = 0;
+      if (event.key === 'ArrowDown' || event.key === 'PageDown' || event.key === ' ') direction = 1;
+      if (event.key === 'ArrowUp' || event.key === 'PageUp') direction = -1;
+      if (!direction) return;
+      if (introPhaseRef.current !== 'entered') {
+        event.preventDefault();
+        return;
+      }
+
+      const destinationIndex = nearestStageIndex() + direction;
+      if (destinationIndex < 0 || destinationIndex >= stageNodes.length) return;
+      event.preventDefault();
+      if (!event.repeat) startSectionMove(direction);
+    };
+
+    if (canPaceSections) {
+      window.addEventListener('wheel', onWheel, { passive: false });
+      window.addEventListener('keydown', onKeyDown);
+    }
 
     const cursor = cursorRef.current;
     const ring = ringRef.current;
@@ -207,11 +326,15 @@ function App() {
       document.documentElement.classList.remove('motion-ready');
       revealObserver.disconnect();
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerleave', hideCursor);
       window.removeEventListener('blur', hideCursor);
       if (scrollFrame) cancelAnimationFrame(scrollFrame);
       if (animationFrame) cancelAnimationFrame(animationFrame);
+      window.clearTimeout(wheelIdleTimer);
+      window.clearTimeout(sectionUnlockTimer);
     };
   }, []);
 
