@@ -2,6 +2,7 @@ import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
 const sections = ['home', 'about', 'education', 'skills', 'experience', 'contact'] as const;
 type SectionId = (typeof sections)[number];
+type IntroPhase = 'loading' | 'closing' | 'entered';
 
 function LetterLine({ children }: { children: string }) {
   return (
@@ -37,11 +38,84 @@ function SectionFooter({ school = true, social = true }: { school?: boolean; soc
   );
 }
 
+function IntroLoader({ closing, onSkip }: { closing: boolean; onSkip: () => void }) {
+  return (
+    <div className={`page-loader${closing ? ' is-closing' : ''}`} aria-live="polite">
+      <div className="page-loader__header" aria-hidden="true">
+        <span>KARAN SAWANT</span>
+        <span>PORTFOLIO / 2026</span>
+      </div>
+      <div className="loader-center">
+        <span className="loader-mark" aria-hidden="true"><span>KS</span></span>
+        <p className="loader-title" role="status">Opening portfolio</p>
+        <div className="loading-track" aria-hidden="true"><span /></div>
+        <button className="skip-intro" type="button" onClick={onSkip}>Skip intro</button>
+      </div>
+      <div className="page-loader__footer" aria-hidden="true">
+        <span>DATA SCIENCE · FRONTEND</span>
+        <span>01 / 06</span>
+      </div>
+    </div>
+  );
+}
+
 function App() {
+  const [introPhase, setIntroPhase] = useState<IntroPhase>(() =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'entered' : 'loading',
+  );
   const [activeSection, setActiveSection] = useState<SectionId>('home');
+  const introPhaseRef = useRef<IntroPhase>(introPhase);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (introPhase !== 'loading') return;
+
+    let cancelled = false;
+    const pause = (duration: number) =>
+      new Promise<void>((resolve) => window.setTimeout(resolve, duration));
+    const hero = document.querySelector<HTMLImageElement>('.hero-portrait');
+    const imageReady = hero ? hero.decode().catch(() => undefined) : Promise.resolve();
+    const fontReady = document.fonts?.ready ?? Promise.resolve();
+    const mediaReady = Promise.race([
+      Promise.all([imageReady, fontReady]).then(() => undefined),
+      pause(1600),
+    ]);
+
+    Promise.all([pause(1050), mediaReady]).then(() => {
+      if (!cancelled) {
+        setIntroPhase((current) => current === 'loading' ? 'closing' : current);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [introPhase]);
+
+  useEffect(() => {
+    if (introPhase !== 'closing') return;
+    const timer = window.setTimeout(() => setIntroPhase('entered'), 720);
+    return () => window.clearTimeout(timer);
+  }, [introPhase]);
+
+  useEffect(() => {
+    introPhaseRef.current = introPhase;
+    if (introPhase === 'entered') {
+      document.documentElement.classList.remove('intro-active');
+      requestAnimationFrame(() => {
+        document.querySelectorAll<HTMLElement>('.stage').forEach((stage) => {
+          const rect = stage.getBoundingClientRect();
+          if (rect.bottom > 0 && rect.top < window.innerHeight * 0.92) {
+            stage.classList.add('is-visible');
+          }
+        });
+      });
+    } else {
+      document.documentElement.classList.add('intro-active');
+    }
+  }, [introPhase]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -52,6 +126,7 @@ function App() {
     const stageNodes = Array.from(document.querySelectorAll<HTMLElement>('.stage'));
     const revealObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
+        if (introPhaseRef.current !== 'entered') return;
         if (entry.isIntersecting) {
           requestAnimationFrame(() => entry.target.classList.add('is-visible'));
         } else if (entry.boundingClientRect.bottom <= 0 || entry.boundingClientRect.top >= window.innerHeight) {
@@ -142,9 +217,15 @@ function App() {
 
   return (
     <>
+      {introPhase !== 'entered' && (
+        <IntroLoader
+          closing={introPhase === 'closing'}
+          onSkip={() => setIntroPhase((current) => current === 'loading' ? 'closing' : current)}
+        />
+      )}
       <a className="skip-link" href="#about" data-testid="link-skip-content">Skip to content</a>
-      <main>
-        <section id="home" className="stage hero is-visible" aria-labelledby="home-title">
+      <main aria-hidden={introPhase !== 'entered'} inert={introPhase !== 'entered'}>
+        <section id="home" className={`stage hero${introPhase === 'entered' ? ' is-visible' : ''}`} aria-labelledby="home-title">
           <nav className="top-nav" aria-label="Portfolio sections">
             {sections.map((id) => (
               <a key={id} href={`#${id}`} aria-current={activeSection === id ? 'true' : undefined} data-testid={`link-nav-${id}`}>
