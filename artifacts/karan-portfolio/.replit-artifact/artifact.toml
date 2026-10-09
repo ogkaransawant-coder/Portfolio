@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Karan Sawant Portfolio"
+description = "An animated personal portfolio for Karan Sawant, presenting his data-science and frontend work through a cinematic, scroll-driven visual experience."
+version = "1.0.0"
+id = "artifacts/karan-portfolio"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22662
+
+[services.development]
+run = "pnpm --filter @workspace/karan-portfolio run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/karan-portfolio", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/karan-portfolio/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22662"
+BASE_PATH = "/"

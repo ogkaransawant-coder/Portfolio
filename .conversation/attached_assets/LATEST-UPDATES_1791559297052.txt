@@ -1,0 +1,5 @@
+This version includes editable HTML components, the opening loader, staggered text and portrait animations, improved heading spacing, the second-page overlap fix, and the red cursor glow with hover and click effects.
+
+Extract the ZIP and open index.html. For local hosting, run python -m http.server 8000 from this folder and visit http://localhost:8000.
+
+Edit index.html for content, style.css for appearance, and script.js for behaviour.
