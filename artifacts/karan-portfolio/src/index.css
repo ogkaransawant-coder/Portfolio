@@ -722,6 +722,9 @@ html.intro-active body { overflow: hidden; }
 .circle { transition: transform 1.3s var(--curve), opacity .85s ease; }
 .motion-ready .circle { opacity: 0; transform: translate3d(0, 36px, 0) scale(.94); }
 .motion-ready .is-visible .circle { opacity: 1; transform: translate3d(var(--drift-x, 0px), var(--drift-y, 0px), 0) scale(1); }
+html.has-custom-cursor,
+html.has-custom-cursor body,
+html.has-custom-cursor body * { cursor: none !important; }
 .cursor-effect {
   position: fixed; z-index: 200; inset: 0; opacity: 0;
   pointer-events: none; transition: opacity .2s;
@@ -729,14 +732,35 @@ html.intro-active body { overflow: hidden; }
 .cursor-effect.is-active { opacity: 1; }
 .cursor-ring, .cursor-glow { position: absolute; left: 0; top: 0; }
 .cursor-ring span {
-  position: absolute; width: 34px; height: 34px; border: 1px solid #ed272c99;
-  border-radius: 50%; transform: translate(-50%, -50%); transition: width .2s, height .2s;
+  position: absolute; top: 0; left: 0; width: 34px; height: 34px;
+  border: 1px solid #ed272cbb; border-radius: 50%;
+  background: #ed272c08; box-shadow: 0 0 18px #ed272c1c;
+  transform: translate(-50%, -50%);
+  transition: width .24s ease, height .24s ease, border-color .24s ease, background .24s ease, box-shadow .24s ease;
 }
-.cursor-effect.is-link .cursor-ring span { width: 52px; height: 52px; border-color: var(--red); }
+.cursor-ring span::after {
+  position: absolute; inset: -1px; border: 1px solid var(--red); border-radius: 50%;
+  content: ''; opacity: 0; transform: scale(.65);
+}
+.cursor-effect.is-link .cursor-ring span {
+  width: 56px; height: 56px; border-color: var(--red);
+  background: #ed272c1a; box-shadow: 0 0 24px #ed272c55, inset 0 0 12px #ed272c22;
+}
+.cursor-dot {
+  position: absolute; top: 0; left: 0; width: 5px; height: 5px;
+  border-radius: 50%; background: #fff; box-shadow: 0 0 10px #ed272cbb;
+  transform: translate(-50%, -50%); transition: background .18s ease, scale .18s ease;
+}
+.cursor-effect.is-link .cursor-dot { background: var(--red); scale: .7; }
+.cursor-effect.is-clicking .cursor-ring span::after { animation: cursor-ripple .56s ease-out; }
 .cursor-glow::before {
-  content: ''; position: absolute; width: 140px; height: 140px;
+  content: ''; position: absolute; top: 0; left: 0; width: 170px; height: 170px;
   border-radius: 50%; transform: translate(-50%, -50%);
-  background: radial-gradient(circle, #ed272c12, transparent 70%);
+  background: radial-gradient(circle, #ed272c24, #ed272c0b 34%, transparent 72%);
+}
+@keyframes cursor-ripple {
+  0% { opacity: .75; transform: scale(.65); }
+  100% { opacity: 0; transform: scale(2.6); }
 }
 
 @media (max-width: 700px) {

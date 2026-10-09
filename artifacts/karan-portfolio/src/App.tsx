@@ -68,6 +68,7 @@ function App() {
   const introPhaseRef = useRef<IntroPhase>(introPhase);
   const sectionPauseUntilRef = useRef(0);
   const cursorRef = useRef<HTMLDivElement>(null);
+  const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
 
@@ -253,6 +254,10 @@ function App() {
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        hideCursor();
+        return;
+      }
       if (!canPaceSections) return;
       const target = event.target;
       if (target instanceof HTMLElement && target.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
@@ -274,10 +279,11 @@ function App() {
 
     if (canPaceSections) {
       window.addEventListener('wheel', onWheel, { passive: false });
-      window.addEventListener('keydown', onKeyDown);
     }
+    window.addEventListener('keydown', onKeyDown);
 
     const cursor = cursorRef.current;
+    const dot = dotRef.current;
     const ring = ringRef.current;
     const glow = glowRef.current;
     const canUseCursor = !reducedMotion && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -285,40 +291,72 @@ function App() {
     let targetY = 0;
     let currentX = 0;
     let currentY = 0;
+    let glowX = 0;
+    let glowY = 0;
     let animationFrame = 0;
+    let clickResetTimer = 0;
     let cursorVisible = false;
     const drawCursor = () => {
       currentX += (targetX - currentX) * 0.18;
       currentY += (targetY - currentY) * 0.18;
-      const transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
-      if (ring) ring.style.transform = transform;
-      if (glow) glow.style.transform = transform;
-      if (cursorVisible && (Math.abs(targetX - currentX) > 0.1 || Math.abs(targetY - currentY) > 0.1)) {
+      glowX += (targetX - glowX) * 0.09;
+      glowY += (targetY - glowY) * 0.09;
+      if (ring) ring.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+      if (glow) glow.style.transform = `translate3d(${glowX}px, ${glowY}px, 0)`;
+      if (dot) dot.style.transform = `translate3d(${targetX}px, ${targetY}px, 0) translate(-50%, -50%)`;
+      if (
+        cursorVisible &&
+        (
+          Math.abs(targetX - currentX) > 0.1 ||
+          Math.abs(targetY - currentY) > 0.1 ||
+          Math.abs(targetX - glowX) > 0.2 ||
+          Math.abs(targetY - glowY) > 0.2
+        )
+      ) {
         animationFrame = requestAnimationFrame(drawCursor);
       } else animationFrame = 0;
     };
     const hideCursor = () => {
       cursorVisible = false;
-      cursor?.classList.remove('is-active', 'is-link');
+      cursor?.classList.remove('is-active', 'is-link', 'is-clicking');
+      document.documentElement.classList.remove('has-custom-cursor');
+      window.clearTimeout(clickResetTimer);
       if (animationFrame) cancelAnimationFrame(animationFrame);
       animationFrame = 0;
     };
     const onPointerMove = (event: PointerEvent) => {
       if (!canUseCursor || event.pointerType !== 'mouse') return;
+      if (introPhaseRef.current !== 'entered') {
+        hideCursor();
+        return;
+      }
+      document.documentElement.classList.add('has-custom-cursor');
       targetX = event.clientX;
       targetY = event.clientY;
       if (!cursorVisible) {
         currentX = targetX;
         currentY = targetY;
+        glowX = targetX;
+        glowY = targetY;
         cursorVisible = true;
         cursor?.classList.add('is-active');
       }
-      cursor?.classList.toggle('is-link', Boolean((event.target as HTMLElement).closest('a, button')));
+      const target = event.target instanceof Element ? event.target : null;
+      cursor?.classList.toggle('is-link', Boolean(target?.closest('a, button')));
       document.documentElement.style.setProperty('--drift-x', `${(event.clientX / window.innerWidth - 0.5) * -10}px`);
       document.documentElement.style.setProperty('--drift-y', `${(event.clientY / window.innerHeight - 0.5) * -8}px`);
       if (!animationFrame) animationFrame = requestAnimationFrame(drawCursor);
     };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!canUseCursor || event.pointerType !== 'mouse' || !cursorVisible || !cursor) return;
+      cursor.classList.remove('is-clicking');
+      void cursor.offsetWidth;
+      cursor.classList.add('is-clicking');
+      window.clearTimeout(clickResetTimer);
+      clickResetTimer = window.setTimeout(() => cursor.classList.remove('is-clicking'), 600);
+    };
     window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointerleave', hideCursor);
     window.addEventListener('blur', hideCursor);
 
@@ -329,12 +367,15 @@ function App() {
       window.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerleave', hideCursor);
       window.removeEventListener('blur', hideCursor);
       if (scrollFrame) cancelAnimationFrame(scrollFrame);
       if (animationFrame) cancelAnimationFrame(animationFrame);
       window.clearTimeout(wheelIdleTimer);
       window.clearTimeout(sectionUnlockTimer);
+      window.clearTimeout(clickResetTimer);
+      document.documentElement.classList.remove('has-custom-cursor');
     };
   }, []);
 
@@ -468,6 +509,7 @@ function App() {
       <div className="cursor-effect" ref={cursorRef} aria-hidden="true">
         <div className="cursor-glow" ref={glowRef} />
         <div className="cursor-ring" ref={ringRef}><span /></div>
+        <div className="cursor-dot" ref={dotRef} />
       </div>
     </>
   );
