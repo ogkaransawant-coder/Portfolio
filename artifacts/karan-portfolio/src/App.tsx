@@ -23,7 +23,7 @@ function SectionHeader({ label }: { label: string }) {
   return (
     <header className="section-header reveal" data-delay="100">
       <span>{label}</span>
-      <time dateTime="2026-05-09">MAY 09, 2026</time>
+      <time dateTime="2006-09-16">SEPT 16, 2006</time>
     </header>
   );
 }
