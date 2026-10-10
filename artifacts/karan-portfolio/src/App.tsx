@@ -38,23 +38,43 @@ function SectionFooter({ school = true, social = true }: { school?: boolean; soc
   );
 }
 
-function IntroLoader({ closing, onSkip }: { closing: boolean; onSkip: () => void }) {
+function IntroLoader({ closing, progress, onSkip }: {
+  closing: boolean;
+  progress: number;
+  onSkip: () => void;
+}) {
+  const waterline = 111 - progress;
+
   return (
-    <div className={`page-loader${closing ? ' is-closing' : ''}`} aria-live="polite">
-      <div className="page-loader__header" aria-hidden="true">
-        <span>KARAN SAWANT</span>
-        <span>PORTFOLIO / 2026</span>
-      </div>
+    <div className={`page-loader${closing ? ' is-closing' : ''}`}>
       <div className="loader-center">
-        <span className="loader-mark" aria-hidden="true"><span>KS</span></span>
-        <p className="loader-title" role="status">Opening portfolio</p>
-        <div className="loading-track" aria-hidden="true"><span /></div>
-        <button className="skip-intro" type="button" onClick={onSkip}>Skip intro</button>
+        <span className="loader-percentage" aria-hidden="true">{progress}</span>
+        <svg className="loader-vessel" viewBox="0 0 260 112" aria-hidden="true">
+          <defs>
+            <clipPath id="loader-vessel-clip">
+              <path d="M2 4 C42 8 78 35 120 48 C158 51 193 22 258 4 C246 64 204 109 130 109 C56 109 14 64 2 4 Z" />
+            </clipPath>
+          </defs>
+          <g clipPath="url(#loader-vessel-clip)">
+            <rect width="260" height="112" fill="#292929" />
+            <path
+              d={`M-10 ${waterline - 26} C28 ${waterline - 16} 65 ${waterline + 5} 130 ${waterline + 6} C195 ${waterline + 5} 232 ${waterline - 16} 270 ${waterline - 26} L270 120 L-10 120 Z`}
+              fill="#050505"
+            />
+          </g>
+        </svg>
+        <div
+          className="loading-track"
+          role="progressbar"
+          aria-label="Loading portfolio"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+        >
+          <span style={{ width: `${progress}%` }} />
+        </div>
       </div>
-      <div className="page-loader__footer" aria-hidden="true">
-        <span>DATA SCIENCE · FRONTEND</span>
-        <span>01 / 06</span>
-      </div>
+      <button className="skip-intro" type="button" onClick={onSkip}>Skip intro</button>
     </div>
   );
 }
@@ -63,12 +83,29 @@ function App() {
   const [introPhase, setIntroPhase] = useState<IntroPhase>(() =>
     window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'entered' : 'loading',
   );
+  const [loaderProgress, setLoaderProgress] = useState(0);
   const [activeSection, setActiveSection] = useState<SectionId>('home');
   const introPhaseRef = useRef<IntroPhase>(introPhase);
   const cursorRef = useRef<HTMLDivElement>(null);
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (introPhase !== 'loading') return;
+
+    const startedAt = performance.now();
+    let frame = 0;
+    const updateProgress = (now: number) => {
+      const easedProgress = 95 * (1 - Math.exp(-(now - startedAt) / 650));
+      const nextProgress = Math.min(94, Math.floor(easedProgress));
+      setLoaderProgress((current) => Math.max(current, nextProgress));
+      if (nextProgress < 94) frame = requestAnimationFrame(updateProgress);
+    };
+
+    frame = requestAnimationFrame(updateProgress);
+    return () => cancelAnimationFrame(frame);
+  }, [introPhase]);
 
   useEffect(() => {
     if (introPhase !== 'loading') return;
@@ -371,6 +408,7 @@ function App() {
       {introPhase !== 'entered' && (
         <IntroLoader
           closing={introPhase === 'closing'}
+          progress={introPhase === 'closing' ? 100 : loaderProgress}
           onSkip={() => setIntroPhase((current) => current === 'loading' ? 'closing' : current)}
         />
       )}
