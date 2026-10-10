@@ -3,7 +3,6 @@ import { type CSSProperties, useEffect, useRef, useState } from 'react';
 const sections = ['home', 'about', 'education', 'skills', 'experience', 'contact'] as const;
 type SectionId = (typeof sections)[number];
 type IntroPhase = 'loading' | 'closing' | 'entered';
-const SECTION_ANIMATION_HOLD_MS = 1900;
 
 function LetterLine({ children }: { children: string }) {
   return (
@@ -66,7 +65,6 @@ function App() {
   );
   const [activeSection, setActiveSection] = useState<SectionId>('home');
   const introPhaseRef = useRef<IntroPhase>(introPhase);
-  const sectionPauseUntilRef = useRef(0);
   const cursorRef = useRef<HTMLDivElement>(null);
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
@@ -107,9 +105,6 @@ function App() {
     introPhaseRef.current = introPhase;
     if (introPhase === 'entered') {
       document.documentElement.classList.remove('intro-active');
-      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        sectionPauseUntilRef.current = performance.now() + SECTION_ANIMATION_HOLD_MS;
-      }
       requestAnimationFrame(() => {
         const center = window.innerHeight * 0.48;
         let firstStage: HTMLElement | null = null;
@@ -146,12 +141,6 @@ function App() {
           const stage = entry.target as HTMLElement;
           if (!stage.classList.contains('is-visible')) {
             requestAnimationFrame(() => stage.classList.add('is-visible'));
-            if (!reducedMotion) {
-              sectionPauseUntilRef.current = Math.max(
-                sectionPauseUntilRef.current,
-                performance.now() + SECTION_ANIMATION_HOLD_MS,
-              );
-            }
           }
         } else if (entry.boundingClientRect.bottom <= 0 || entry.boundingClientRect.top >= window.innerHeight) {
           entry.target.classList.remove('is-visible');
@@ -188,7 +177,6 @@ function App() {
     let sectionMoveLocked = false;
     let wheelGestureActive = false;
     let wheelIdleTimer = 0;
-    let sectionUnlockTimer = 0;
 
     const nearestStageIndex = () => {
       const center = window.innerHeight * 0.48;
@@ -207,22 +195,20 @@ function App() {
       return nearestIndex;
     };
 
+    const onSectionScrollEnd = () => {
+      sectionMoveLocked = false;
+    };
+
     const startSectionMove = (direction: number) => {
       const destination = stageNodes[nearestStageIndex() + direction];
       if (
         !destination ||
         introPhaseRef.current !== 'entered' ||
-        sectionMoveLocked ||
-        performance.now() < sectionPauseUntilRef.current
+        sectionMoveLocked
       ) return false;
 
       sectionMoveLocked = true;
-      sectionPauseUntilRef.current = performance.now() + SECTION_ANIMATION_HOLD_MS;
       destination.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.clearTimeout(sectionUnlockTimer);
-      sectionUnlockTimer = window.setTimeout(() => {
-        sectionMoveLocked = false;
-      }, SECTION_ANIMATION_HOLD_MS);
       return true;
     };
 
@@ -279,6 +265,7 @@ function App() {
 
     if (canPaceSections) {
       window.addEventListener('wheel', onWheel, { passive: false });
+      document.addEventListener('scrollend', onSectionScrollEnd);
     }
     window.addEventListener('keydown', onKeyDown);
 
@@ -365,6 +352,7 @@ function App() {
       revealObserver.disconnect();
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('wheel', onWheel);
+      document.removeEventListener('scrollend', onSectionScrollEnd);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', onPointerDown);
@@ -373,7 +361,6 @@ function App() {
       if (scrollFrame) cancelAnimationFrame(scrollFrame);
       if (animationFrame) cancelAnimationFrame(animationFrame);
       window.clearTimeout(wheelIdleTimer);
-      window.clearTimeout(sectionUnlockTimer);
       window.clearTimeout(clickResetTimer);
       document.documentElement.classList.remove('has-custom-cursor');
     };
