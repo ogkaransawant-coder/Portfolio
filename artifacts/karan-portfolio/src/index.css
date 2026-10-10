@@ -745,10 +745,15 @@ html.has-custom-cursor body * { cursor: none !important; }
   .section-footer { position: relative; inset: auto !important; display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 26px; font-size: 14px; line-height: 1.5; }
   .section-footer > span:last-child { flex-basis: 100%; max-width: none !important; margin: 0 !important; white-space: normal !important; text-align: left !important; }
   .top-nav {
-    top: 12px; width: min(360px, calc(100% - 16px)); max-width: calc(100% - 16px);
-    grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 4px;
+    top: 12px; display: flex; flex-wrap: nowrap; justify-content: center;
+    width: max-content; max-width: calc(100% - 16px);
+    gap: clamp(0px, .35vw, 2px); padding: 3px;
   }
-  .top-nav a { min-height: 36px; padding: 8px 6px; font-size: 12px; }
+  .top-nav a {
+    flex: 0 0 auto; min-height: 34px;
+    padding: 7px clamp(3px, 1.1vw, 6px);
+    font-size: clamp(9px, 2.75vw, 11px); line-height: 18px;
+  }
   .hero { padding-top: 90px; }
   .hero-title { position: relative; inset: auto !important; width: 100%; max-width: 100%; font-size: 20.5vw; line-height: 1.05; }
   .hero-portrait, .about-portrait, .education-portrait, .skills-portrait, .contact-portrait {
