@@ -43,25 +43,25 @@ function IntroLoader({ closing, progress, onSkip }: {
   progress: number;
   onSkip: () => void;
 }) {
-  const waterline = 111 - progress;
+  const waterline = 120 - progress * 1.2;
 
   return (
     <div className={`page-loader${closing ? ' is-closing' : ''}`}>
       <div className="loader-center">
         <span className="loader-percentage" aria-hidden="true">{progress}</span>
-        <svg className="loader-vessel" viewBox="0 0 260 112" aria-hidden="true">
+        <svg className="loader-orb" viewBox="0 0 120 120" aria-hidden="true">
           <defs>
-            <clipPath id="loader-vessel-clip">
-              <path d="M2 4 C42 8 78 35 120 48 C158 51 193 22 258 4 C246 64 204 109 130 109 C56 109 14 64 2 4 Z" />
+            <clipPath id="loader-orb-clip">
+              <circle cx="60" cy="60" r="52" />
             </clipPath>
           </defs>
-          <g clipPath="url(#loader-vessel-clip)">
-            <rect width="260" height="112" fill="#292929" />
-            <path
-              d={`M-10 ${waterline - 26} C28 ${waterline - 16} 65 ${waterline + 5} 130 ${waterline + 6} C195 ${waterline + 5} 232 ${waterline - 16} 270 ${waterline - 26} L270 120 L-10 120 Z`}
-              fill="#050505"
-            />
-          </g>
+          <circle cx="60" cy="60" r="52" fill="#292929" />
+          <path
+            clipPath="url(#loader-orb-clip)"
+            d={`M0 ${waterline} C25 ${waterline - 7} 40 ${waterline + 6} 60 ${waterline} C82 ${waterline - 6} 98 ${waterline + 7} 120 ${waterline} V120 H0 Z`}
+            fill="#ed272c"
+          />
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#ed272c" strokeWidth="2.5" />
         </svg>
         <div
           className="loading-track"

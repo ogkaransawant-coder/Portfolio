@@ -480,8 +480,8 @@ html.intro-active body { overflow: hidden; }
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: #fff;
-  color: #050505;
+  background: var(--background);
+  color: var(--ink);
   transition: transform .72s cubic-bezier(.76, 0, .24, 1), opacity .72s ease;
 }
 .page-loader.is-closing {
@@ -500,38 +500,39 @@ html.intro-active body { overflow: hidden; }
   transform: translate(-50%, -50%);
 }
 .loader-percentage {
-  color: #050505;
-  font-family: Georgia, 'Times New Roman', serif;
+  color: var(--red);
+  font-family: 'PortfolioDisplay', Impact, sans-serif;
   font-size: clamp(68px, 12vw, 92px);
   font-weight: 400;
-  letter-spacing: -.055em;
+  letter-spacing: .015em;
   line-height: .78;
 }
-.loader-vessel {
+.loader-orb {
   display: block;
-  width: min(260px, 72vw);
+  width: min(180px, 54vw);
   height: auto;
-  margin-top: -4px;
+  margin-top: 12px;
   overflow: visible;
+  filter: drop-shadow(0 0 22px #ed272c24);
 }
 .loading-track {
-  width: min(260px, 72vw);
-  height: 22px;
-  margin-top: 18px;
-  padding: 3px;
-  border: 2px solid #050505;
+  width: min(220px, 72vw);
+  height: 14px;
+  margin-top: 16px;
+  padding: 2px;
+  border: 1px solid #555;
   border-radius: 999px;
   box-sizing: border-box;
   overflow: hidden;
-  background: #fff;
+  background: #242424;
 }
 .loading-track span {
   display: block;
   height: 100%;
   max-width: 100%;
   border-radius: inherit;
-  background: #050505;
-  transition: width .16s linear;
+  background: var(--red);
+  box-shadow: 0 0 10px #ed272c66;
 }
 .skip-intro {
   position: absolute;
@@ -539,16 +540,16 @@ html.intro-active body { overflow: hidden; }
   bottom: clamp(18px, 4vh, 34px);
   padding: 8px 0;
   border: 0;
-  border-bottom: 1px solid #999;
+  border-bottom: 1px solid #555;
   background: transparent;
-  color: #666;
+  color: #aaa;
   cursor: pointer;
   font-size: 11px;
   letter-spacing: .08em;
   transition: color .2s ease, border-color .2s ease;
 }
-.skip-intro:hover { border-color: #050505; color: #050505; }
-.skip-intro:focus-visible { outline: 2px solid #050505; outline-offset: 4px; }
+.skip-intro:hover { border-color: var(--red); color: var(--red); }
+.skip-intro:focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
 .skip-link {
   position: fixed; z-index: 1000; top: -4rem; left: 1rem;
   padding: .75rem 1rem; background: var(--red); color: white;
